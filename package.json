@@ -1,0 +1,20 @@
+{
+  "name": "weather-app-pk",
+  "version": "1.0.0",
+  "description": "Weather — a professional weather app for Pakistan built on the Open-Meteo API.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["weather", "open-meteo", "pakistan", "express", "tailwind"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

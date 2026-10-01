@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Weather — Pakistan-first forecasts</title>
+<meta name="description" content="A precise, professional weather app for cities across Pakistan, powered by Open-Meteo." />
+
+<!-- Fonts: Space Grotesk for display/numerals, Inter for body & data -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<!-- Tailwind (Play CDN) + project theme tokens -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          navy: { 950: "#120C29", 900: "#1A1340", 800: "#261B57" },
+          saffron: { 300: "#F7C56B", 400: "#F2A93B", 500: "#E0922A" },
+          mist: { 50: "#F7F5FF", 200: "#D9D3F0" },
+          teal: { 400: "#2DD4BF" },
+        },
+        fontFamily: {
+          display: ["'Space Grotesk'", "sans-serif"],
+          body: ["'Inter'", "sans-serif"],
+        },
+      },
+    },
+  };
+</script>
+
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+
+<body class="font-body bg-navy-950 text-mist-50 antialiased" data-is-day="day">
+
+<div class="app-backdrop" aria-hidden="true"></div>
+
+<div class="relative min-h-screen flex flex-col">
+
+  
+  <header class="px-5 sm:px-8 pt-6 pb-4 max-w-5xl w-full mx-auto">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h1 class="font-display text-2xl font-semibold tracking-tight">Weather</h1>
+        <p class="text-sm text-mist-200/70 mt-0.5">Pakistan weather, precisely.</p>
+      </div>
+
+      <div class="flex items-center gap-2">
+       
+        <div class="relative">
+          <form id="search-form" role="search" class="flex items-center gap-2">
+            <label for="search-input" class="sr-only">Search for a city</label>
+            <div class="relative">
+              <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mist-200/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input
+                id="search-input"
+                type="text"
+                placeholder="Search any city…"
+                autocomplete="off"
+                class="w-44 sm:w-60 pl-9 pr-3 py-2.5 rounded-full bg-white/5 border border-white/10 text-sm placeholder:text-mist-200/40 focus:outline-none focus:ring-2 focus:ring-saffron-400/60 focus:border-transparent transition"
+              />
+            </div>
+            <button
+              id="geo-btn"
+              type="button"
+              aria-label="Use my current location"
+              title="Use my location"
+              class="shrink-0 grid place-items-center w-10 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition focus:outline-none focus:ring-2 focus:ring-saffron-400/60"
+            >
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="5.5"/></svg>
+            </button>
+          </form>
+
+          <ul id="suggestions" class="suggestions-panel hidden" role="listbox" aria-label="Search suggestions"></ul>
+        </div>
+
+        <button
+          id="unit-toggle"
+          type="button"
+          aria-label="Switch to Fahrenheit"
+          class="w-11 h-10 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition text-sm font-display font-semibold focus:outline-none focus:ring-2 focus:ring-saffron-400/60"
+        >°C</button>
+      </div>
+    </div>
+
+   
+    <div id="city-chips" class="flex gap-2 overflow-x-auto no-scrollbar mt-5 pb-1"></div>
+  </header>
+
+
+  <div id="error-banner" class="hidden max-w-5xl w-full mx-auto px-5 sm:px-8 mb-2">
+    <div class="flex items-center justify-between gap-3 bg-red-500/10 border border-red-400/30 text-red-200 text-sm rounded-xl px-4 py-3">
+      <span id="error-text"></span>
+      <button id="error-retry" class="shrink-0 underline decoration-red-300/60 hover:decoration-red-200 font-medium">Retry</button>
+    </div>
+  </div>
+
+  
+  <div id="skeleton" class="hidden max-w-5xl w-full mx-auto px-5 sm:px-8 space-y-6 animate-pulse">
+    <div class="h-40 bg-white/5 rounded-2xl"></div>
+    <div class="h-28 bg-white/5 rounded-2xl"></div>
+    <div class="h-64 bg-white/5 rounded-2xl"></div>
+  </div>
+
+
+  <main id="app" class="flex-1 max-w-5xl w-full mx-auto px-5 sm:px-8 pb-10 transition-opacity duration-300">
+
+    
+    <section class="relative py-8 sm:py-12" aria-label="Current conditions">
+      <div id="hero-glow" class="hero-glow" aria-hidden="true"></div>
+
+      <div class="relative flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+        <div>
+          <h2 id="place-name" class="font-display text-3xl sm:text-4xl font-semibold tracking-tight">—</h2>
+          <p id="place-meta" class="text-mist-200/60 text-sm mt-1">—</p>
+          <p id="local-time" class="text-mist-200/60 text-sm mt-0.5">—</p>
+
+          <p id="hero-condition" class="font-display text-lg mt-5">—</p>
+          <p id="hero-feels" class="text-mist-200/70 text-sm mt-1">—</p>
+          <p id="hero-high-low" class="text-mist-200/70 text-sm font-medium mt-0.5">—</p>
+        </div>
+
+        <div class="flex items-center gap-3 sm:gap-5">
+          <span id="hero-icon" class="w-16 h-16 sm:w-20 sm:h-20 text-saffron-300 animate-float"></span>
+          <span id="hero-temp" class="font-display text-7xl sm:text-8xl font-semibold tracking-tighter leading-none">—</span>
+        </div>
+      </div>
+    </section>
+
+   
+    <section aria-label="Hourly forecast" class="mt-2">
+      <h3 class="section-label">Next 24 hours</h3>
+      <div id="hourly-strip" class="flex gap-0 overflow-x-auto no-scrollbar pb-2 -mx-1 px-1"></div>
+    </section>
+
+   
+    <section aria-label="7 day forecast" class="mt-8">
+      <h3 class="section-label">7-day forecast</h3>
+      <div id="daily-list" class="divide-y divide-white/[0.06]"></div>
+    </section>
+
+  
+    <section aria-label="Weather details" class="mt-8 grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+      <div class="detail-panel">
+        <p class="detail-label">Humidity</p>
+        <p id="detail-humidity" class="detail-value">—</p>
+      </div>
+
+      <div class="detail-panel">
+        <p class="detail-label">Pressure</p>
+        <p id="detail-pressure" class="detail-value">—</p>
+      </div>
+
+      <div class="detail-panel">
+        <p class="detail-label">UV index (today)</p>
+        <p id="detail-uv" class="detail-value">—</p>
+      </div>
+
+      <div class="detail-panel">
+        <p class="detail-label">Rain chance</p>
+        <p id="detail-precip" class="detail-value">—</p>
+      </div>
+
+      
+      <div class="detail-panel col-span-2 flex items-center justify-between">
+        <div>
+          <p class="detail-label">Wind</p>
+          <p class="detail-value"><span id="detail-wind-speed">—</span></p>
+          <p class="text-xs text-mist-200/50 mt-0.5">From <span id="detail-wind-compass">—</span></p>
+        </div>
+        <div class="compass" aria-hidden="true">
+          <span class="compass-tick n">N</span>
+          <svg id="wind-arrow" class="wind-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v15M12 3l4.5 5M12 3L7.5 8"/>
+          </svg>
+        </div>
+      </div>
+
+      
+      <div class="detail-panel col-span-2">
+        <div class="flex items-center justify-between">
+          <p class="detail-label">Sun · <span id="sun-status">—</span></p>
+        </div>
+        <div class="sun-track mt-3">
+          <span id="sun-track-fill" class="sun-track-fill"></span>
+          <span id="sun-marker" class="sun-marker"></span>
+        </div>
+        <div class="flex items-center justify-between text-xs text-mist-200/60 mt-2">
+          <span id="sunrise-time">—</span>
+          <span id="sunset-time">—</span>
+        </div>
+      </div>
+    </section>
+
+    
+    <footer class="mt-10 flex items-center justify-between flex-wrap gap-3 text-xs text-mist-200/40">
+      <p>Weather data by <a href="https://open-meteo.com" target="_blank" rel="noopener" class="underline hover:text-mist-200/70 transition">Open-Meteo.com</a> · © <span id="attribution-time">2026</span></p>
+      <div class="flex items-center gap-3">
+        <span id="last-updated">—</span>
+        <button id="refresh-btn" type="button" aria-label="Refresh weather data" class="grid place-items-center w-8 h-8 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg>
+        </button>
+      </div>
+    </footer>
+
+  </main>
+</div>
+
+<script src="/js/cities.js"></script>
+<script src="/js/weatherCodes.js"></script>
+<script src="/js/app.js"></script>
+</body>
+</html>
